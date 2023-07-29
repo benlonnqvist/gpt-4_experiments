@@ -29,13 +29,15 @@ class ExperimentRunner:
             messages=self.messages,
             temperature=self.temperature
         )
-        self.handle_response(response_to_instruction)
+        self.parse_raw_response(response_to_instruction)
         for _ in self.benchmark.experimental_setup['blocks']:
             self.run_block()
 
     def run_block(self):
         self.benchmark.start_new_block()
-        for trial in range(self.benchmark.experimental_setup['num_trials_per_block']):
+        block_has_feedback = self.benchmark.experimental_setup['blocks'][self.benchmark.current_block]['feedback']
+        trials_in_block = self.benchmark.experimental_setup['blocks'][self.benchmark.current_block]['trials']
+        for trial in range(trials_in_block):
             stimulus = self.benchmark.run_trial()
             self.messages.append({"role": "user", "content": stimulus['filename']})
             response = openai.ChatCompletion.create(
@@ -44,23 +46,30 @@ class ExperimentRunner:
                 temperature=self.temperature
             )
             self.parse_raw_response(response)
-            self.benchmark.model_responses[self.benchmark.current_block][trial] = self.benchmark.is_response_correct(
-                response)
-            # TODO: save some stuff, etc. check indices.
+            response_is_correct = self.benchmark.is_response_correct(response, stimulus)
+            self.benchmark.model_correct_responses[self.benchmark.current_block].append(response_is_correct)
+            if block_has_feedback:
+                feedback_type = "correct" if response_is_correct else "incorrect"
+                self.messages.append({"role": "user",
+                                      "content": self.benchmark.experimental_setup['feedback_string'][feedback_type]})
+        self.benchmark.end_block()
 
     def parse_raw_response(self, response):
-        self.messages.append(response['choices'][0]['message']['content'])
+        self.messages.append({"role": "assistant",
+                              "content": response['choices'][0]['message']['content']})
         self.save_full_response_to_json(response)
 
+    def handle_response(self, response, stimulus):
+        block_id = self.benchmark.current_block_index
+        is_correct = self.benchmark.is_response_correct(response, stimulus)
+        if block_id not in self.benchmark.model_correct_responses:
+            self.benchmark.model_correct_responses[block_id] = []
+        self.benchmark.model_correct_responses[block_id].append(is_correct)
+
     def save_full_response_to_json(self, response):
-        # Load the existing data from the file
         with open(self.message_json_log_name, 'r') as f:
             data = json.load(f)
-
-        # Append the new response to the data
         data.append(response)
-
-        # Write the updated data back to the file
         with open(self.message_json_log_name, 'w') as f:
             json.dump(data, f)
 
@@ -75,8 +84,7 @@ class ExperimentRunner:
             message_json_log_name = f'LOG_{self.model}_{self.temperature}_{self.benchmark}_' \
                                     f'{self.benchmark.candidate_visual_degrees}visdeg_{seed}.json'
 
-        # Create the new json file
         with open(message_json_log_name, 'w') as f:
-            json.dump({initial_data}, f)  # create an empty json file
+            json.dump({initial_data}, f)
 
         return message_json_log_name

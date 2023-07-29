@@ -1,6 +1,7 @@
 import os
 import json
 import csv
+import string
 
 import cv2
 import pandas as pd
@@ -17,14 +18,12 @@ class Benchmark:
         self.current_block_index = 0
         self.current_block = None
         self.current_trial_in_block = 0
-        self.model_responses = {}
-
-    def read_experimental_setup(self, setup_file_name: str) -> dict:
-        with open(setup_file_name, 'r') as f:
-            experimental_setup = json.load(f)
-        return experimental_setup
+        self.model_correct_responses = {}
 
     def start_new_block(self):
+        raise NotImplementedError
+
+    def end_block(self):
         raise NotImplementedError
 
     def run_trial(self):
@@ -34,10 +33,7 @@ class Benchmark:
         raise NotImplementedError
 
     def resize_input_image(self, image, source_visual_degrees, candidate_visual_degrees):
-        # Calculate the resize factor
         resize_factor = candidate_visual_degrees / source_visual_degrees
-
-        # Resize the image
         resized_image = cv2.resize(image, None, fx=resize_factor, fy=resize_factor, interpolation=cv2.INTER_LINEAR)
 
         # If candidate_visual_degrees > source_visual_degrees, we need to pad the image with zeros
@@ -52,12 +48,12 @@ class Benchmark:
 
     def check_experimental_setup_contents_ok(self):
         assert 'blocks' in self.experimental_setup
-        assert isinstance(self.experimental_setup['blocks'], list)
-        for block in self.experimental_setup['blocks']:
-            assert isinstance(block, str)
-
-        assert 'num_trials_per_block' in self.experimental_setup
-        assert isinstance(self.experimental_setup['num_trials_per_block'], int)
+        assert isinstance(self.experimental_setup['blocks'], dict)
+        for block in self.experimental_setup['blocks'].keys():
+            assert isinstance(block, list)
+            assert 'name' in block
+            assert 'feedback' in block
+            assert 'trials' in block
 
         assert 'shared_instruction' in self.experimental_setup
         assert isinstance(self.experimental_setup['shared_instruction'], str)
@@ -65,17 +61,16 @@ class Benchmark:
         assert 'experiment-specific_instruction' in self.experimental_setup
         assert isinstance(self.experimental_setup['experiment-specific_instruction'], str)
 
-        assert 'has_practice_block' in self.experimental_setup
-        assert isinstance(self.experimental_setup['has_practice_block'], bool)
+        assert 'feedback_string' in self.experimental_setup
+        assert isinstance(self.experimental_setup['feedback_string'], dict)
+        assert 'correct' in self.experimental_setup['feedback_string'].keys()
+        assert 'incorrect' in self.experimental_setup['feedback_string'].keys()
 
-        assert 'num_trials_in_practice_block' in self.experimental_setup
-        assert isinstance(self.experimental_setup['num_trials_in_practice_block'], int)
-
-        assert 'give_feedback_in_practice_block' in self.experimental_setup
-        assert isinstance(self.experimental_setup['give_feedback_in_practice_block'], bool)
-
-        assert 'give_feedback_in_experiment' in self.experimental_setup
-        assert isinstance(self.experimental_setup['give_feedback_in_experiment'], bool)
+    @staticmethod
+    def read_experimental_setup(setup_file_name: str) -> dict:
+        with open(setup_file_name, 'r') as f:
+            experimental_setup = json.load(f)
+        return experimental_setup
 
     @staticmethod
     def pad_image(original_image, resized_image):
@@ -109,6 +104,12 @@ class Benchmark:
     def is_response_correct(response, stimulus):
         raise NotImplementedError
 
+    @staticmethod
+    def process_response_string(response: str) -> str:
+        response = response.lower()
+        response = "".join([character for character in response if character not in string.punctuation])
+        return response.strip()
+
 
 class Malania2007(Benchmark):
     setup_file_name = 'malania2007.json'
@@ -119,22 +120,24 @@ class Malania2007(Benchmark):
         self.current_block_index = 0
         self.current_block = None
         self.current_trial_in_block = 0
-        self.model_responses = {}
+        self.model_correct_responses = {}
         self.stimulus_metadata, self.stimulus_directory = None, None
         self.staircase = None
 
     def run_trial(self):
         if not self.current_trial_in_block == 0:
-            self.staircase.update(self.model_responses[self.current_block[-1]])
+            self.staircase.update(self.model_correct_responses[self.current_block][-1])
         selected_stimulus = self.select_stimulus()
         self.current_trial_in_block += 1
         return selected_stimulus
 
     def start_new_block(self):
         self.current_trial_in_block = 0
-        self.current_block = self.experimental_setup['blocks'][self.current_block_index]
+        self.current_block = self.experimental_setup['blocks'].keys()[str(self.current_block_index)]
         self.stimulus_metadata, self.stimulus_directory = self.load_metadata(self.data_root_directory)
         self.staircase = PEST(possible_values=self.stimulus_metadata['vernier_offset'].unique(), starting_value=150)
+
+    def end_block(self):
         self.current_block_index += 1
 
     def select_stimulus(self):
@@ -144,18 +147,12 @@ class Malania2007(Benchmark):
 
         # Select a random stimulus from this filtered set
         selected_stimulus = current_offset_stimuli.sample(1)
-
-        # Return the filename of the selected stimulus
         return selected_stimulus
 
     def load_metadata(self, root_directory):
         metadata_directory = os.path.join(root_directory, self.current_block, 'metadata.csv')
         image_directory = os.path.join(root_directory, self.current_block, 'images')
-
-        # Read the CSV file into a DataFrame
         stimuli = pd.read_csv(metadata_directory)
-
-        # Convert columns to appropriate data types
         stimuli = stimuli.astype({
             'image_size_x': 'int',
             'image_size_y': 'int',
@@ -177,8 +174,8 @@ class Malania2007(Benchmark):
 
         return stimuli, image_directory
 
-    @staticmethod
-    def is_response_correct(response, stimulus):
+    def is_response_correct(self, response, stimulus):
+        response = self.process_response_string(response)
         if response == stimulus['image_label']:
             return 1
         else:

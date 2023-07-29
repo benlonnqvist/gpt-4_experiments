@@ -1,18 +1,40 @@
 {
-    "blocks": [
-        "vernier_only",
-        "short-2",
-        "short-4",
-        "_TAG_RESET_MODEL",
-        "short-4",
-        "short-2",
-        "vernier_only"
-    ],
-    "num_trials_per_block": 80,
+    "blocks": {
+        "0": {
+            "name": "vernier_only",
+            "feedback": true,
+            "trials": 80
+        },
+        "1": {
+            "name": "short-2",
+            "feedback": true,
+            "trials": 80
+        },
+        "2": {
+            "name": "short-4",
+            "feedback": true,
+            "trials": 80
+        },
+        "3": {
+            "name": "short-4",
+            "feedback": true,
+            "trials": 80
+        },
+        "4": {
+            "name": "short-2",
+            "feedback": true,
+            "trials": 80
+        },
+        "5": {
+            "name": "vernier_only",
+            "feedback": true,
+            "trials": 80
+        }
+    },
     "shared_instruction": "This is a mock instruction.",
     "experiment-specific_instruction": "...",
-    "has_practice_block": false,
-    "num_trials_in_practice_block": 0,
-    "give_feedback_in_practice_block": null,
-    "give_feedback_in_experiment": true
+    "feedback_string": {
+        "correct": "Correct response.",
+        "incorrect": "Incorrect response."
+    }
 }
