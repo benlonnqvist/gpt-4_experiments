@@ -1,2 +1,0 @@
-
-API_ACCESS_KEY = None
