@@ -154,3 +154,5 @@ cython_debug/
 *.csv
 api_key.py
 .idea/vcs.xml
+local_info.json
+local_functions.py

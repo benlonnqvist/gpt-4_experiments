@@ -3,39 +3,14 @@
         "0": {
             "name": "vernier-only",
             "feedback": true,
-            "trials": 80
-        },
-        "1": {
-            "name": "short-2",
-            "feedback": true,
-            "trials": 80
-        },
-        "2": {
-            "name": "short-4",
-            "feedback": true,
-            "trials": 80
-        },
-        "3": {
-            "name": "short-4",
-            "feedback": true,
-            "trials": 80
-        },
-        "4": {
-            "name": "short-2",
-            "feedback": true,
-            "trials": 80
-        },
-        "5": {
-            "name": "vernier_only",
-            "feedback": true,
-            "trials": 80
+            "trials": 1
         }
     },
     "shared_instruction": "You are invited to participate in a research project. The research project aims to study visual perception, i.e. the processing of visual information in participants. In our experiments, visual stimuli will be presented to you as images. Your task will be to evaluate some properties of these stimuli and to give your answer using the provided answer options only. We will measure your behavioral responses (accuracy of your responses, correctness, etc.). Answer as truthfully as possible, and if you are not sure, make your best guess.",
-    "experiment-specific_instruction": "...",
+    "experiment-specific_instruction": "Your task is to describe the images you see. Respond with 'I understand' if you understand.",
     "feedback_string": {
         "correct": "Correct response.",
         "incorrect": "Incorrect response."
     },
-    "stimulus_message": "The bottom line is offset to the left or to the right of the top line?"
+    "stimulus_message": "Describe this image."
 }
