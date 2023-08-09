@@ -1,21 +1,26 @@
 import os
 import json
+import time
+import copy
 
 from benchmarks.benchmarks import Benchmark, Malania2007, TestMalania2007
 from local_functions import load_image, collect_hidden_params  # to hide potentially proprietary information
+from data_handler import DataHandler
 
 import openai
 
 
 class ExperimentRunner:
     def __init__(self,
+                 data_save_root,
                  model: str,
                  temperature: float,
                  benchmark: Benchmark,
                  candidate_visual_degrees: float,
                  generic_system_message: str,
                  debug_mode: bool = False,
-                 message_history_length: int = 10):
+                 message_history_length: int = 3):
+        self.data_handler = DataHandler(save_root=data_save_root)
         self.model = model
         self.temperature = temperature
         self.benchmark = benchmark
@@ -25,47 +30,85 @@ class ExperimentRunner:
             {"role": "system", "content": system_message},
             {"role": "user",   "content": self.benchmark.experimental_setup['experiment-specific_instruction']}
         ]
-        self.full_message_history = self.base_messages
-        self.current_messages = self.base_messages
+        self.full_message_history = copy.deepcopy(self.base_messages)
+        self.current_messages = []
         self.debug_mode = debug_mode
         self.message_history_length = message_history_length
         self.message_json_log_name = self.create_json_log(self.base_messages)
 
     def run_experiment(self):
-        chat_params = collect_hidden_params(model=self.model, messages=self.messages, temperature=self.temperature)
-        response_to_instruction = openai.ChatCompletion.create(**chat_params)
-        self.parse_raw_response(response_to_instruction)
+        chat_params = collect_hidden_params(model=self.model,
+                                            messages=self.prepare_model_message(),
+                                            temperature=self.temperature)
+        model_response_to_instruction = openai.ChatCompletion.create(**chat_params)['choices'][0]['message']['content']
+        message_to_instruction = {"role": "assistant",
+                                   "content": model_response_to_instruction}
+        self.process_message(message_to_instruction, block_has_feedback=False, add_to_base_messages=True)
         for _ in self.benchmark.experimental_setup['blocks']:
             self.run_block()
+            self.save_all_messages()
+            self.clear_all_messages()
 
     def run_block(self):
         self.benchmark.start_new_block()
         block_has_feedback = self.benchmark.experimental_setup['blocks'][self.benchmark.current_block_index]['feedback']
         trials_in_block = self.benchmark.experimental_setup['blocks'][self.benchmark.current_block_index]['trials']
         for trial in range(trials_in_block):
+            # get stimulus
             stimulus = self.benchmark.run_stimulus_selection()
             stimulus_path = os.path.join(self.benchmark.current_block_directory, 'images', stimulus['filename'].item())
             image = load_image(stimulus_path, self.benchmark.visual_degrees, self.candidate_visual_degrees,
                                debug_mode=self.debug_mode)
+
+            # prepare message to the model
             self.process_message({"role": "user",
                                   "content": [self.benchmark.experimental_setup['stimulus_message'], {"image": image}]},
                                  block_has_feedback)
             chat_params = collect_hidden_params(model=self.model,
                                                 messages=self.prepare_model_message(),
                                                 temperature=self.temperature)
-            response = openai.ChatCompletion.create(**chat_params)
-            model_response_message = self.parse_raw_response(response)
-            self.process_message(model_response_message, block_has_feedback)
+
+            # get model response and process it
+            api_error = True
+            while api_error:
+                try:
+                    response = openai.ChatCompletion.create(**chat_params)
+                    api_error = False
+                except openai.error.APIError as e:
+                    print(e)
+                    time.sleep(10)
+            model_response_message = response['choices'][0]['message']['content']
+            self.process_message({"role": "assistant",
+                                  "content": model_response_message}, block_has_feedback)
             response_is_correct = self.benchmark.is_response_correct(model_response_message, stimulus)
+
+            # update staircase and benchmark trial status
+            self.benchmark.update_staircase()
+            self.benchmark.end_trial()
+
+            # update data handler(s)
+            self.data_handler.add_trial(block=self.benchmark.current_block_index,
+                                        trial=trial,
+                                        stimulus_id=stimulus['stimulus_id'],
+                                        image_label=stimulus['image_label'],
+                                        model_response=model_response_message,
+                                        model_response_is_correct=response_is_correct,
+                                        current_metric_value=self.benchmark.staircase.get_current_val())
             self.benchmark.model_correct_responses[self.benchmark.current_block_index].append(response_is_correct)
+
+            # if the block has feedback, add it to messages
             if block_has_feedback:
                 feedback_type = "correct" if response_is_correct else "incorrect"
                 self.process_message({"role": "user",
                                       "content": self.benchmark.experimental_setup['feedback_string'][feedback_type]},
                                      block_has_feedback)
+        # save data and end block
+        self.data_handler.plot_current_metric_value(block=self.benchmark.current_block_index)
+        self.data_handler.save_data(file_name=os.path.join(self.benchmark.name,
+                                                           f'{self.benchmark.current_block_index}.csv'))
         self.benchmark.end_block()
 
-    def process_message(self, message: dict, block_has_feedback: int):
+    def process_message(self, message: dict, block_has_feedback: int, add_to_base_messages: bool = False):
         """
         A method to process messages and keep track of which messages are ongoing in the current conversation and which
         messages should only be kept in the message history.
@@ -77,20 +120,17 @@ class ExperimentRunner:
                                    conversation that is saved.
         :return:
         """
-        self.full_message_history.append(message)
-        self.current_messages.append(message)
-        if len(self.current_messages) > (2 + int(block_has_feedback)) * self.message_history_length:
-            self.current_messages.pop(0)
+        if add_to_base_messages:
+            self.base_messages.append(message)
+            self.full_message_history.append(message)
+        else:
+            self.full_message_history.append(message)
+            self.current_messages.append(message)
+            if len(self.current_messages) > (2 + int(block_has_feedback)) * self.message_history_length:
+                self.current_messages.pop(0)
 
     def prepare_model_message(self):
-        self.base_messages.extend(self.current_messages)
-
-    def parse_raw_response(self, response):
-        model_response_message = response['choices'][0]['message']['content']
-        self.full_message_history.append({"role": "assistant",
-                                          "content": model_response_message})
-        self.save_full_response_to_json(response)
-        return model_response_message
+        return self.base_messages + self.current_messages
 
     def handle_response(self, response, stimulus):
         block_id = self.benchmark.current_block_index
@@ -99,14 +139,19 @@ class ExperimentRunner:
             self.benchmark.model_correct_responses[block_id] = []
         self.benchmark.model_correct_responses[block_id].append(is_correct)
 
-    def save_full_response_to_json(self, response):
+    def save_all_messages(self):
         with open(self.message_json_log_name, 'r') as f:
             data = json.load(f)
-        data['messages'].append(response)
+        data['messages'].append(self.full_message_history)
         with open(self.message_json_log_name, 'w') as f:
             json.dump(data, f)
 
-    def create_json_log(self, initial_data, root: str = './logs'):
+    def clear_all_messages(self):
+        self.full_message_history = copy.deepcopy(self.base_messages)
+        self.current_messages = []
+
+    def create_json_log(self, initial_data, root_folder_name: str = 'logs'):
+        root = os.path.join('.', root_folder_name)
         if not os.path.exists(root):
             os.makedirs(root)
 
@@ -134,11 +179,12 @@ if __name__ == '__main__':
     ORGANIZATION = local_info["ORGANIZATION"]
     GENERIC_SYSTEM_MESSAGE = local_info["GENERIC_SYSTEM_MESSAGE"]
 
-    openai.organization = ORGANIZATION
+    # openai.organization = ORGANIZATION
 
     testmalania = TestMalania2007(data_root_directory=os.path.join('.', 'benchmarks', 'malania2007'),
-                                  setup_file_name=os.path.join('.', 'benchmarks', 'test.json'))
-    experiment = ExperimentRunner(model=MODEL_NAME, temperature=0., benchmark=testmalania,
-                                  candidate_visual_degrees=testmalania.visual_degrees,
-                                  generic_system_message=GENERIC_SYSTEM_MESSAGE, debug_mode=True)
+                                  setup_file_name=os.path.join('.', 'benchmarks', 'mini_malania2007.json'))
+    experiment = ExperimentRunner(data_save_root=os.path.join('.', 'experimental_data'),
+                                  model=MODEL_NAME, temperature=0., benchmark=testmalania,
+                                  candidate_visual_degrees=0.5,
+                                  generic_system_message=GENERIC_SYSTEM_MESSAGE, debug_mode=False)
     experiment.run_experiment()

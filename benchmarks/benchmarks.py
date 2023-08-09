@@ -16,6 +16,7 @@ class Benchmark:
         self.visual_degrees = visual_degrees
         self.check_experimental_setup_contents_ok()
         self.name = name
+        self.staircase = None
 
         self.current_block_index = 0
         self.current_block_name = None
@@ -33,6 +34,12 @@ class Benchmark:
         raise NotImplementedError
 
     def approximate_experiment_token_length(self):
+        raise NotImplementedError
+
+    def update_staircase(self):
+        raise NotImplementedError
+
+    def end_trial(self):
         raise NotImplementedError
 
     def check_experimental_setup_contents_ok(self):
@@ -88,18 +95,15 @@ class Malania2007(Benchmark):
         self.current_trial_in_block = 0
         self.model_correct_responses = {}
         self.stimulus_metadata, self.stimulus_directory = None, None
-        self.staircase = None
 
     def run_stimulus_selection(self):
-        if not self.current_trial_in_block == 0:
-            self.staircase.update(self.model_correct_responses[self.current_block_index][-1])
         selected_stimulus = self.select_stimulus()
-        self.current_trial_in_block += 1
         return selected_stimulus
 
     def start_new_block(self):
         self.current_trial_in_block = 0
         self.current_block_name = self.experimental_setup['blocks'][self.current_block_index]['name']
+        self.model_correct_responses[self.current_block_index] = []
         self.current_block_directory = os.path.join(self.data_root_directory, self.current_block_name)
         self.stimulus_metadata, self.stimulus_directory = self.load_metadata(self.data_root_directory)
         self.staircase = PEST(possible_values=self.stimulus_metadata['vernier_offset'].unique(), starting_value=150)
@@ -145,9 +149,17 @@ class Malania2007(Benchmark):
     def is_response_correct(self, response, stimulus):
         response = self.process_response_string(response)
         if response == stimulus['image_label'].item():
-            return 1
+            is_correct = 1
         else:
-            return 0
+            is_correct = 0
+        self.model_correct_responses[self.current_block_index].append(is_correct)
+        return is_correct
+
+    def update_staircase(self):
+        self.staircase.update(self.model_correct_responses[self.current_block_index][-1])
+
+    def end_trial(self):
+        self.current_trial_in_block += 1
 
     def approximate_experiment_token_length(self):
         raise NotImplementedError
@@ -164,6 +176,8 @@ class TestMalania2007(Malania2007):
     def is_response_correct(self, response, stimulus):
         response = self.process_response_string(response)
         if response == stimulus['image_label'].item():
-            return 1
+            is_correct = 1
         else:
-            return 0
+            is_correct = 0
+        self.model_correct_responses[self.current_block_index].append(is_correct)
+        return is_correct
