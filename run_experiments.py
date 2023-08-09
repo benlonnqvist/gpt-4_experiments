@@ -107,8 +107,9 @@ class ExperimentRunner:
             json.dump(data, f)
 
     def create_json_log(self, initial_data, root: str = './logs'):
-        # TODO: add model params etc to initial_data too.
-        # TODO: put in logs/ folder
+        if not os.path.exists(root):
+            os.makedirs(root)
+
         seed = 0
         message_json_log_name = f'LOG_MODEL{self.model}_TEMP{self.temperature}_BENCHMARK{self.benchmark.name}_' \
                                 f'VISDEG{self.candidate_visual_degrees}_SEED{seed}.json'
