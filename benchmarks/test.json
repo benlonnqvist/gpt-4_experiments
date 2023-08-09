@@ -7,10 +7,10 @@
         }
     },
     "shared_instruction": "You are invited to participate in a research project. The research project aims to study visual perception, i.e. the processing of visual information in participants. In our experiments, visual stimuli will be presented to you as images. Your task will be to evaluate some properties of these stimuli and to give your answer using the provided answer options only. We will measure your behavioral responses (accuracy of your responses, correctness, etc.). Answer as truthfully as possible, and if you are not sure, make your best guess.",
-    "experiment-specific_instruction": "Your task is to describe the images you see. Respond with 'I understand' if you understand.",
+    "experiment-specific_instruction": "You will be shown images that will contain two line segments, one of which is above the other. The target line segments are slightly offset from each other (for example, the top line may be slightly to the left of the bottom line). Your task is to discriminate whether the bottom line is to the left or to the right of the top line. Sometimes the line segments are surrounded by clutter, and you are to ignore this clutter to the best of your ability. Your available answer options for this question are: 'left', or 'right'. In addition, indicate your confidence in your response as a percentage.",
     "feedback_string": {
         "correct": "Correct response.",
         "incorrect": "Incorrect response."
     },
-    "stimulus_message": "Describe this image."
+    "stimulus_message": "Is the top line to the left or to the right of the bottom line?"
 }

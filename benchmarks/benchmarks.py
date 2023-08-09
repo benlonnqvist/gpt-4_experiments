@@ -160,3 +160,10 @@ class TestMalania2007(Malania2007):
         self.experimental_setup = self.read_experimental_setup(setup_file_name=self.setup_file_name)
         self.check_experimental_setup_contents_ok()
         self.name = 'testmalania2007'
+
+    def is_response_correct(self, response, stimulus):
+        response = self.process_response_string(response)
+        if response == stimulus['image_label'].item():
+            return 1
+        else:
+            return 0
