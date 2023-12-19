@@ -105,7 +105,7 @@ class ExperimentRunner:
         # save data and end block
         self.data_handler.plot_current_metric_value(block=self.benchmark.current_block_index)
         self.data_handler.save_data(file_name=os.path.join(self.benchmark.name,
-                                                           f'{self.benchmark.current_block_index}.csv'))
+                                                           f'{self.benchmark.name}.csv'))
         self.benchmark.end_block()
 
     def process_message(self, message: dict, block_has_feedback: int, add_to_base_messages: bool = False):
@@ -182,9 +182,9 @@ if __name__ == '__main__':
     # openai.organization = ORGANIZATION
 
     testmalania = TestMalania2007(data_root_directory=os.path.join('.', 'benchmarks', 'malania2007'),
-                                  setup_file_name=os.path.join('.', 'benchmarks', 'mini_malania2007.json'))
+                                  setup_file_name=os.path.join('.', 'benchmarks', 'debug_malania2007.json'))
     experiment = ExperimentRunner(data_save_root=os.path.join('.', 'experimental_data'),
                                   model=MODEL_NAME, temperature=0., benchmark=testmalania,
-                                  candidate_visual_degrees=0.5,
+                                  candidate_visual_degrees=testmalania.visual_degrees,
                                   generic_system_message=GENERIC_SYSTEM_MESSAGE, debug_mode=False)
     experiment.run_experiment()

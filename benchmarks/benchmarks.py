@@ -181,3 +181,13 @@ class TestMalania2007(Malania2007):
             is_correct = 0
         self.model_correct_responses[self.current_block_index].append(is_correct)
         return is_correct
+
+
+class ShowImage(Benchmark):
+    setup_file_name = os.path.join('.', 'benchmarks', 'ScialomUnpublished')
+    visual_degrees = 8.
+    name = 'BENCHMARKshowimage'
+
+    def __init__(self, data_root_directory: str):
+        super().__init__(data_root_directory, self.setup_file_name, self.visual_degrees, self.name)
+        raise NotImplementedError
