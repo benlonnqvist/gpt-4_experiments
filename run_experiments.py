@@ -3,6 +3,8 @@ import json
 import time
 import copy
 
+from tqdm import tqdm
+
 from benchmarks.benchmark import Benchmark, Scialom2024
 from local_functions import load_image, collect_hidden_params  # to hide potentially proprietary information
 from data_handler import ScialomDataHandler
@@ -19,7 +21,7 @@ class ExperimentRunner:
                  candidate_visual_degrees: float,
                  generic_system_message: str,
                  debug_mode: bool = False,
-                 message_history_length: int = 48  # approx. 1 block of trials
+                 message_history_length: int = 6  # a few trials of history
                  ):
         self.data_handler = ScialomDataHandler(save_root=data_save_root)
         self.model = model
@@ -53,9 +55,10 @@ class ExperimentRunner:
 
     def run_block(self):
         self.benchmark.start_new_block()
+        print(f"Starting block {self.benchmark.current_block_index}")
         block_has_feedback = self.benchmark.experimental_setup['blocks'][self.benchmark.current_block_index]['feedback']
         trials_in_block = self.benchmark.experimental_setup['blocks'][self.benchmark.current_block_index]['trials']
-        for trial in range(trials_in_block):
+        for trial in tqdm(range(trials_in_block)):
             time.sleep(1)
             # get stimulus
             stimulus = self.benchmark.run_stimulus_selection()
