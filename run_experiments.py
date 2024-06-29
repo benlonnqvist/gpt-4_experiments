@@ -3,11 +3,11 @@ import json
 import time
 import copy
 
-from benchmarks.benchmarks import Benchmark, Malania2007, TestMalania2007
+from benchmarks.benchmark import Benchmark, Scialom2024
 from local_functions import load_image, collect_hidden_params  # to hide potentially proprietary information
-from data_handler import DataHandler
+from data_handler import ScialomDataHandler
 
-import openai
+from openai import OpenAI
 
 
 class ExperimentRunner:
@@ -19,8 +19,9 @@ class ExperimentRunner:
                  candidate_visual_degrees: float,
                  generic_system_message: str,
                  debug_mode: bool = False,
-                 message_history_length: int = 3):
-        self.data_handler = DataHandler(save_root=data_save_root)
+                 message_history_length: int = 48  # approx. 1 block of trials
+                 ):
+        self.data_handler = ScialomDataHandler(save_root=data_save_root)
         self.model = model
         self.temperature = temperature
         self.benchmark = benchmark
@@ -35,14 +36,15 @@ class ExperimentRunner:
         self.debug_mode = debug_mode
         self.message_history_length = message_history_length
         self.message_json_log_name = self.create_json_log(self.base_messages)
+        self.client = OpenAI(api_key=API_ACCESS_KEY, organization=ORGANIZATION)
 
     def run_experiment(self):
         chat_params = collect_hidden_params(model=self.model,
                                             messages=self.prepare_model_message(),
                                             temperature=self.temperature)
-        model_response_to_instruction = openai.ChatCompletion.create(**chat_params)['choices'][0]['message']['content']
+        model_response_to_instruction = self.client.chat.completions.create(**chat_params).choices[0].message.content
         message_to_instruction = {"role": "assistant",
-                                   "content": model_response_to_instruction}
+                                  "content": model_response_to_instruction}
         self.process_message(message_to_instruction, block_has_feedback=False, add_to_base_messages=True)
         for _ in self.benchmark.experimental_setup['blocks']:
             self.run_block()
@@ -54,9 +56,10 @@ class ExperimentRunner:
         block_has_feedback = self.benchmark.experimental_setup['blocks'][self.benchmark.current_block_index]['feedback']
         trials_in_block = self.benchmark.experimental_setup['blocks'][self.benchmark.current_block_index]['trials']
         for trial in range(trials_in_block):
+            time.sleep(1)
             # get stimulus
             stimulus = self.benchmark.run_stimulus_selection()
-            stimulus_path = os.path.join(self.benchmark.current_block_directory, 'images', stimulus['filename'].item())
+            stimulus_path = os.path.join(self.benchmark.current_block_directory, 'Stimuli', stimulus['file_name'].item())
             image = load_image(stimulus_path, self.benchmark.visual_degrees, self.candidate_visual_degrees,
                                debug_mode=self.debug_mode)
 
@@ -69,31 +72,24 @@ class ExperimentRunner:
                                                 temperature=self.temperature)
 
             # get model response and process it
-            api_error = True
-            while api_error:
-                try:
-                    response = openai.ChatCompletion.create(**chat_params)
-                    api_error = False
-                except openai.error.APIError as e:
-                    print(e)
-                    time.sleep(10)
-            model_response_message = response['choices'][0]['message']['content']
+            response = self.client.chat.completions.create(**chat_params)
+            model_response_message = response.choices[0].message.content
             self.process_message({"role": "assistant",
                                   "content": model_response_message}, block_has_feedback)
             response_is_correct = self.benchmark.is_response_correct(model_response_message, stimulus)
 
-            # update staircase and benchmark trial status
-            self.benchmark.update_staircase()
             self.benchmark.end_trial()
 
             # update data handler(s)
-            self.data_handler.add_trial(block=self.benchmark.current_block_index,
-                                        trial=trial,
-                                        stimulus_id=stimulus['stimulus_id'],
-                                        image_label=stimulus['image_label'],
-                                        model_response=model_response_message,
-                                        model_response_is_correct=response_is_correct,
-                                        current_metric_value=self.benchmark.staircase.get_current_val())
+            # TODO: should refactor data_handler to be contained in the benchmark class
+            self.data_handler.add_trial(
+                subject_group=self.benchmark.subject_group[int(self.benchmark.current_block_index)],
+                visual_degrees=self.benchmark.visual_degrees,
+                is_correct=response_is_correct,
+                subject_answer=model_response_message,
+                correct_answer=stimulus['category'],
+                percentage_elements=stimulus['percentage_elements'],
+                stimulus_id=stimulus['stimulus_id'])
             self.benchmark.model_correct_responses[self.benchmark.current_block_index].append(response_is_correct)
 
             # if the block has feedback, add it to messages
@@ -103,9 +99,8 @@ class ExperimentRunner:
                                       "content": self.benchmark.experimental_setup['feedback_string'][feedback_type]},
                                      block_has_feedback)
         # save data and end block
-        self.data_handler.plot_current_metric_value(block=self.benchmark.current_block_index)
         self.data_handler.save_data(file_name=os.path.join(self.benchmark.name,
-                                                           f'{self.benchmark.name}.csv'))
+                                                           f'{self.benchmark.name}'))
         self.benchmark.end_block()
 
     def process_message(self, message: dict, block_has_feedback: int, add_to_base_messages: bool = False):
@@ -157,12 +152,14 @@ class ExperimentRunner:
 
         seed = 0
         message_json_log_name = f'LOG_MODEL{self.model}_TEMP{self.temperature}_BENCHMARK{self.benchmark.name}_' \
-                                f'VISDEG{self.candidate_visual_degrees}_SEED{seed}.json'
+                                f'{self.benchmark.subject_group[0]}_VISDEG{self.candidate_visual_degrees}_' \
+                                f'SEED{seed}.json'
         # Check if a file with the current name exists, if so increment the seed and create a new name
         while os.path.exists(os.path.join(root, message_json_log_name)):
             seed += 1
             message_json_log_name = f'LOG_MODEL{self.model}_TEMP{self.temperature}_BENCHMARK{self.benchmark.name}_' \
-                                    f'VISDEG{self.candidate_visual_degrees}_SEED{seed}.json'
+                                    f'{self.benchmark.subject_group[0]}_VISDEG{self.candidate_visual_degrees}_' \
+                                    f'SEED{seed}.json'
         save_path = os.path.join(root, message_json_log_name)
 
         with open(save_path, 'w') as f:
@@ -174,17 +171,17 @@ class ExperimentRunner:
 if __name__ == '__main__':
     with open('local_info.json', 'r') as f:
         local_info = json.load(f)
-    API_ACCESS_KEY = local_info["API_ACCESS_KEY"]
+    API_ACCESS_KEY = local_info["PROJECT_KEY"]
     MODEL_NAME = local_info["MODEL_NAME"]
     ORGANIZATION = local_info["ORGANIZATION"]
     GENERIC_SYSTEM_MESSAGE = local_info["GENERIC_SYSTEM_MESSAGE"]
 
     # openai.organization = ORGANIZATION
 
-    testmalania = TestMalania2007(data_root_directory=os.path.join('.', 'benchmarks', 'malania2007'),
-                                  setup_file_name=os.path.join('.', 'benchmarks', 'debug_malania2007.json'))
+    testscialom = Scialom2024(data_root_directory=os.path.join('.', 'benchmarks', 'Scialom2024'),
+                              subject_group='segments')
     experiment = ExperimentRunner(data_save_root=os.path.join('.', 'experimental_data'),
-                                  model=MODEL_NAME, temperature=0., benchmark=testmalania,
-                                  candidate_visual_degrees=testmalania.visual_degrees,
+                                  model=MODEL_NAME, temperature=0., benchmark=testscialom,
+                                  candidate_visual_degrees=testscialom.visual_degrees,
                                   generic_system_message=GENERIC_SYSTEM_MESSAGE, debug_mode=False)
     experiment.run_experiment()

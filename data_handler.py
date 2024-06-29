@@ -9,6 +9,28 @@ class DataHandler:
         self.df = pd.DataFrame()
         self.save_root = save_root
 
+    def add_trial(self, **kwargs):
+        raise NotImplementedError
+
+    def save_data(self, file_name):
+        if not os.path.exists(self.save_root):
+            os.makedirs(self.save_root)
+        seed = 0
+        proposed_file_name = f"{file_name}_SEED{seed}.csv"
+        while os.path.exists(os.path.join(self.save_root, proposed_file_name)):
+            seed += 1
+            proposed_file_name = f'{file_name}_SEED{seed}.csv'
+        save_path = os.path.join(self.save_root, proposed_file_name)
+        self.df.to_csv(save_path)
+
+    def load_data(self, file_name):
+        self.df = pd.read_csv(os.path.join(self.save_root, file_name), header=0, index_col=[0, 1])
+
+
+class MalaniaDataHandler(DataHandler):
+    def __init__(self, save_root):
+        super().__init__(save_root)
+
     def add_trial(self,
                   block,
                   trial,
@@ -28,14 +50,6 @@ class DataHandler:
 
         new_row = pd.DataFrame(trial_data, index=pd.MultiIndex.from_tuples([(block, trial)], names=['block', 'trial']))
         self.df = pd.concat([self.df, new_row])
-
-    def save_data(self, file_name):
-        if not os.path.exists(self.save_root):
-            os.makedirs(self.save_root)
-        self.df.to_csv(os.path.join(self.save_root, file_name))
-
-    def load_data(self, file_name):
-        self.df = pd.read_csv(os.path.join(self.save_root, file_name), header=0, index_col=[0, 1])
 
     def plot_current_metric_value(self, block=None):
         """
@@ -63,6 +77,32 @@ class DataHandler:
         plt.grid(True)
         plt.tight_layout()
         plt.show()
+
+
+class ScialomDataHandler(DataHandler):
+    def __init__(self, save_root):
+        super().__init__(save_root)
+
+    def add_trial(self,
+                  subject_group,
+                  visual_degrees,
+                  is_correct,
+                  subject_answer,
+                  correct_answer,
+                  percentage_elements,
+                  stimulus_id):
+        trial_data = {
+            "subject_group": subject_group,
+            "visual_degrees": visual_degrees,
+            "image_duration": 200,
+            "is_correct": is_correct,
+            "subject_answer": subject_answer,
+            "correct_answer": correct_answer,
+            "percentage_elements": percentage_elements,
+            "stimulus_id": stimulus_id
+        }
+        new_row = pd.DataFrame(trial_data)
+        self.df = pd.concat([self.df, new_row])
 
 
 import random

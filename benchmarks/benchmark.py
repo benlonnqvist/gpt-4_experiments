@@ -75,9 +75,13 @@ class Benchmark:
         raise NotImplementedError
 
     @staticmethod
-    def process_response_string(response: str) -> str:
+    def find_correct_response_in_string(input_str: str) -> str:
+        raise NotImplementedError
+
+    def process_response_string(self, response: str) -> str:
         response = response.lower()
         response = "".join([character for character in response if character not in string.punctuation])
+        response = self.find_correct_response_in_string(response)
         return response.strip()
 
 
@@ -181,6 +185,98 @@ class TestMalania2007(Malania2007):
             is_correct = 0
         self.model_correct_responses[self.current_block_index].append(is_correct)
         return is_correct
+
+
+class Scialom2024(Benchmark):
+    setup_file_name = os.path.join('.', 'benchmarks', 'Scialom2024', 'scialom2024.json')
+    visual_degrees = 8.
+    name = 'BENCHMARKscialom2024'
+
+    def __init__(self,
+                 data_root_directory: str,
+                 subject_group: str = 'segments'):
+        super().__init__(data_root_directory, self.setup_file_name, self.visual_degrees, self.name)
+        self._current_block_index = 0
+        self.current_block_index = str(self._current_block_index)
+        self.current_block_name = 'none'
+        self.current_block_directory = os.path.join(self.data_root_directory)
+        self.current_trial_in_block = 0
+        self.model_correct_responses = {}
+        self.subject_group = [subject_group] * 9 + ['contours', 'RGB']
+        self.stimulus_metadata, self.stimulus_directory = None, None
+
+    def run_stimulus_selection(self):
+        selected_stimulus = self.select_stimulus()
+        return selected_stimulus
+
+    def start_new_block(self):
+        self.current_trial_in_block = 0
+        self.current_block_name = self.experimental_setup['blocks'][self.current_block_index]['name']
+        self.model_correct_responses[self.current_block_index] = []
+        self.current_block_directory = os.path.join(self.data_root_directory)
+        self.stimulus_metadata, self.stimulus_directory = self.load_metadata(
+            self.data_root_directory,
+            self.current_block_name
+        )
+
+    def end_block(self):
+        self._current_block_index += 1
+        self.current_block_index = str(self._current_block_index)
+
+    def select_stimulus(self) -> str:
+        # select a random stimulus_id from self.stimulus_metadata['stimulus_id']
+        selected_stimulus = self.stimulus_metadata.sample(1)
+        # remove selected_stimulus from self.stimulus_metadata
+        self.stimulus_metadata = self.stimulus_metadata[
+            self.stimulus_metadata['stimulus_id'] != selected_stimulus['stimulus_id'].item()]
+        return selected_stimulus
+
+    def load_metadata(self, root_directory, percentage_elements: str):
+        if self.current_block_name == 'practice':
+            metadata_directory = os.path.join(root_directory, 'MetaData_Stimuli_training.csv')
+        else:
+            metadata_directory = os.path.join(root_directory, 'MetaData_Stimuli_experiment.csv')
+        image_directory = os.path.join(root_directory, 'Stimuli')
+        stimuli = pd.read_csv(metadata_directory)
+        stimuli = stimuli.astype({
+            'image_height': 'int',
+            'image_width': 'int',
+            'channel': 'int',
+            'percentage_elements': 'str',
+            'representation_mode': 'str',
+            'object_id': 'int',
+            'category': 'str',
+            'visual_degrees': 'float',
+            'stimulus_id': 'str',
+            'file_name': 'str'
+        })
+        # filter stimuli by percentage_elements and representation_mode == self.subject_group
+        stimuli = stimuli[(stimuli['percentage_elements'] == percentage_elements) &
+                          (stimuli['representation_mode'] == self.subject_group[self._current_block_index])]
+        return stimuli, image_directory
+
+    def is_response_correct(self, response, stimulus):
+        response = self.process_response_string(response)
+        if response == stimulus['category'].item().lower():
+            is_correct = 1
+        else:
+            is_correct = 0
+        self.model_correct_responses[self.current_block_index].append(is_correct)
+        return is_correct
+
+    def end_trial(self):
+        self.current_trial_in_block += 1
+
+    def approximate_experiment_token_length(self):
+        raise NotImplementedError
+
+    @staticmethod
+    def find_correct_response_in_string(input_str: str) -> str:
+        correct_responses = ['truck', 'cup', 'bowl', 'binoculars', 'glasses', 'beanie', 'pan', 'sewing machine', 'shovel', 'banana', 'boot', 'lamp']
+        for response in correct_responses:
+            if response in input_str:
+                return response
+        return 'INVALID RESPONSE'
 
 
 class ShowImage(Benchmark):
