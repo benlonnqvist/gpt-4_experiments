@@ -3,27 +3,27 @@
         "0": {
             "name": "12",
             "feedback": false,
-            "trials": 1
+            "trials": 48
         },
         "1": {
             "name": "16",
             "feedback": false,
-            "trials": 1
+            "trials": 48
         },
         "2": {
             "name": "21",
             "feedback": false,
-            "trials": 1
+            "trials": 48
         },
         "3": {
             "name": "27",
             "feedback": false,
-            "trials": 1
+            "trials": 48
         },
         "4": {
             "name": "35",
             "feedback": false,
-            "trials": 1
+            "trials": 48
         },
         "5": {
             "name": "46",
