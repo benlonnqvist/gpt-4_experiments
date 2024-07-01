@@ -182,7 +182,7 @@ if __name__ == '__main__':
     # openai.organization = ORGANIZATION
 
     testscialom = Scialom2024(data_root_directory=os.path.join('.', 'benchmarks', 'Scialom2024'),
-                              subject_group='segments')
+                              subject_group='phosphenes')
     experiment = ExperimentRunner(data_save_root=os.path.join('.', 'experimental_data'),
                                   model=MODEL_NAME, temperature=0., benchmark=testscialom,
                                   candidate_visual_degrees=testscialom.visual_degrees,

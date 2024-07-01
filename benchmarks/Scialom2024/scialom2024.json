@@ -1,0 +1,66 @@
+{
+    "blocks": {
+        "0": {
+            "name": "12",
+            "feedback": false,
+            "trials": 1
+        },
+        "1": {
+            "name": "16",
+            "feedback": false,
+            "trials": 1
+        },
+        "2": {
+            "name": "21",
+            "feedback": false,
+            "trials": 1
+        },
+        "3": {
+            "name": "27",
+            "feedback": false,
+            "trials": 1
+        },
+        "4": {
+            "name": "35",
+            "feedback": false,
+            "trials": 1
+        },
+        "5": {
+            "name": "46",
+            "feedback": false,
+            "trials": 48
+        },
+        "6": {
+            "name": "59",
+            "feedback": false,
+            "trials": 48
+        },
+        "7": {
+            "name": "77",
+            "feedback": false,
+            "trials": 48
+        },
+        "8": {
+            "name": "100",
+            "feedback": false,
+            "trials": 48
+        },
+        "9": {
+            "name": "contours",
+            "feedback": false,
+            "trials": 48
+        },
+        "10": {
+            "name": "RGB",
+            "feedback": false,
+            "trials": 48
+        }
+    },
+    "shared_instruction": "The experiment will now begin.",
+    "experiment-specific_instruction": "Today you are going to do an experiment about object recognition. We will present you objects on the screen having points or segments along their contours. Your task is to recognize them. They will be presented in the middle of the image. For each object, you must decide between 12 possible answer options which will be provided for you. You should only choose one of the 12 available options, and that should be your only response. There will be 11 blocks. From block 1 to 9 you will be shown points or segments. It is going to get easier with increasing blocks. First, it will be more difficult, so do not get discouraged. In block 10, you will be shown contours, and in block 11, full color images. Your available answer options for each image are: Truck, Cup, Bowl, Binoculars, Glasses, Beanie, Pan, Sewing machine, Shovel, Banana, Boot, Lamp. Respond with: `My guess for this image is [category].`",
+    "feedback_string": {
+        "correct": "Correct response.",
+        "incorrect": "Incorrect response."
+    },
+    "stimulus_message": "Which of the following categories does the object in the image belong to? Available answer options: Truck, Cup, Bowl, Binoculars, Glasses, Beanie, Pan, Sewing machine, Shovel, Banana, Boot, Lamp? Respond with: `My guess for this image is [category].`"
+}
