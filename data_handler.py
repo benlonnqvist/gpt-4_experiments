@@ -105,6 +105,35 @@ class ScialomDataHandler(DataHandler):
         self.df = pd.concat([self.df, new_row])
 
 
+class LonnqvistDataHandler(DataHandler):
+    def __init__(self, save_root):
+        super().__init__(save_root)
+
+    # the data handler is not a class to handle participant data but instead the
+    #  data of the LLM (trial data tracking etc.)
+    def add_trial(self,
+                  visual_degrees,
+                  is_correct,
+                  subject_answer,
+                  correct_answer,
+                  curve_length,
+                  n_cross,
+                  stimulus_id,
+                  ):
+        trial_data = {
+            "visual_degrees": visual_degrees,
+            "image_duration": 200,
+            "is_correct": is_correct,
+            "subject_answer": subject_answer,
+            "correct_answer": correct_answer,
+            "curve_length": curve_length,
+            "n_cross": n_cross,
+            "stimulus_id": stimulus_id
+        }
+        new_row = pd.DataFrame(trial_data)
+        self.df = pd.concat([self.df, new_row])
+
+
 import random
 
 

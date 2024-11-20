@@ -5,37 +5,41 @@ import copy
 
 from tqdm import tqdm
 
-from benchmarks.benchmark import Benchmark, Scialom2024
+from benchmarks.benchmark import Benchmark, Scialom2024, Lonnqvist2024
 from local_functions import load_image, collect_hidden_params  # to hide potentially proprietary information
-from data_handler import ScialomDataHandler
+from data_handler import DataHandler, ScialomDataHandler, LonnqvistDataHandler
 
 from openai import OpenAI
 
 
 class ExperimentRunner:
     def __init__(self,
-                 data_save_root,
                  model: str,
                  temperature: float,
                  benchmark: Benchmark,
+                 data_handler: DataHandler,
                  candidate_visual_degrees: float,
                  generic_system_message: str,
                  debug_mode: bool = False,
                  message_history_length: int = 6  # a few trials of history
                  ):
-        self.data_handler = ScialomDataHandler(save_root=data_save_root)
+        self.data_handler = data_handler
         self.model = model
         self.temperature = temperature
         self.benchmark = benchmark
         self.candidate_visual_degrees = candidate_visual_degrees
+        self.debug_mode = debug_mode
         system_message = generic_system_message + '\n' + self.benchmark.experimental_setup['shared_instruction']
+        example_stimulus_path = os.path.join('benchmarks', 'Lonnqvist2024', 'stimuli', 'image_instructions.png')
+        example_image = load_image(example_stimulus_path, self.benchmark.visual_degrees, self.candidate_visual_degrees,
+                           debug_mode=self.debug_mode)
         self.base_messages = [
             {"role": "system", "content": system_message},
-            {"role": "user",   "content": self.benchmark.experimental_setup['experiment-specific_instruction']}
+            {"role": "user",   "content": self.benchmark.experimental_setup['experiment-specific_instruction']},
+            {"role": "user",   "content": "Here is an example image instruction.", "image": example_image}
         ]
         self.full_message_history = copy.deepcopy(self.base_messages)
         self.current_messages = []
-        self.debug_mode = debug_mode
         self.message_history_length = message_history_length
         self.message_json_log_name = self.create_json_log(self.base_messages)
         self.client = OpenAI(api_key=API_ACCESS_KEY, organization=ORGANIZATION)
@@ -62,7 +66,7 @@ class ExperimentRunner:
             time.sleep(1)
             # get stimulus
             stimulus = self.benchmark.run_stimulus_selection()
-            stimulus_path = os.path.join(self.benchmark.current_block_directory, 'Stimuli', stimulus['file_name'].item())
+            stimulus_path = os.path.join(self.benchmark.current_block_directory, stimulus['file_name'].item())
             image = load_image(stimulus_path, self.benchmark.visual_degrees, self.candidate_visual_degrees,
                                debug_mode=self.debug_mode)
 
@@ -75,7 +79,7 @@ class ExperimentRunner:
                                                 temperature=self.temperature)
 
             # get model response and process it
-            response = self.client.chat.completions.create(**chat_params)
+            response = self.get_model_response(chat_params, trial)
             model_response_message = response.choices[0].message.content
             self.process_message({"role": "assistant",
                                   "content": model_response_message}, block_has_feedback)
@@ -85,14 +89,24 @@ class ExperimentRunner:
 
             # update data handler(s)
             # TODO: should refactor data_handler to be contained in the benchmark class
+            # scialom
+            # self.data_handler.add_trial(
+            #     subject_group=self.benchmark.subject_group[int(self.benchmark.current_block_index)],
+            #     visual_degrees=self.benchmark.visual_degrees,
+            #     is_correct=response_is_correct,
+            #     subject_answer=model_response_message,
+            #     correct_answer=stimulus['category'],
+            #     percentage_elements=stimulus['percentage_elements'],
+            #     stimulus_id=stimulus['stimulus_id'])
             self.data_handler.add_trial(
-                subject_group=self.benchmark.subject_group[int(self.benchmark.current_block_index)],
                 visual_degrees=self.benchmark.visual_degrees,
                 is_correct=response_is_correct,
                 subject_answer=model_response_message,
-                correct_answer=stimulus['category'],
-                percentage_elements=stimulus['percentage_elements'],
-                stimulus_id=stimulus['stimulus_id'])
+                correct_answer=stimulus['correct_response_key'],
+                curve_length=stimulus['curve_length'],
+                n_cross=stimulus['n_cross'],
+                stimulus_id=stimulus['stimulus_id']
+            )
             self.benchmark.model_correct_responses[self.benchmark.current_block_index].append(response_is_correct)
 
             # if the block has feedback, add it to messages
@@ -127,6 +141,18 @@ class ExperimentRunner:
             if len(self.current_messages) > (2 + int(block_has_feedback)) * self.message_history_length:
                 self.current_messages.pop(0)
 
+    def get_model_response(self, chat_params, trial: int):
+        response = None
+        while response is None:
+            try:
+                response = self.client.chat.completions.create(**chat_params)
+            except Exception as e:
+                print(f"Error in response on trial {trial}:")
+                print(e)
+                print("Retrying...")
+                time.sleep(5)
+        return response
+
     def prepare_model_message(self):
         return self.base_messages + self.current_messages
 
@@ -149,19 +175,23 @@ class ExperimentRunner:
         self.current_messages = []
 
     def create_json_log(self, initial_data, root_folder_name: str = 'logs'):
+        # TODO: refactor this somewhere somehow perhaps?
         root = os.path.join('.', root_folder_name)
         if not os.path.exists(root):
             os.makedirs(root)
 
         seed = 0
+        # scialom_message_json_log_name = f'LOG_MODEL{self.model}_TEMP{self.temperature}_BENCHMARK{self.benchmark.name}_' \
+        #                         f'{self.benchmark.subject_group[0]}_VISDEG{self.candidate_visual_degrees}_' \
+        #                         f'SEED{seed}.json'
         message_json_log_name = f'LOG_MODEL{self.model}_TEMP{self.temperature}_BENCHMARK{self.benchmark.name}_' \
-                                f'{self.benchmark.subject_group[0]}_VISDEG{self.candidate_visual_degrees}_' \
+                                f'VISDEG{self.candidate_visual_degrees}_' \
                                 f'SEED{seed}.json'
         # Check if a file with the current name exists, if so increment the seed and create a new name
         while os.path.exists(os.path.join(root, message_json_log_name)):
             seed += 1
             message_json_log_name = f'LOG_MODEL{self.model}_TEMP{self.temperature}_BENCHMARK{self.benchmark.name}_' \
-                                    f'{self.benchmark.subject_group[0]}_VISDEG{self.candidate_visual_degrees}_' \
+                                    f'VISDEG{self.candidate_visual_degrees}_' \
                                     f'SEED{seed}.json'
         save_path = os.path.join(root, message_json_log_name)
 
@@ -181,10 +211,19 @@ if __name__ == '__main__':
 
     # openai.organization = ORGANIZATION
 
-    testscialom = Scialom2024(data_root_directory=os.path.join('.', 'benchmarks', 'Scialom2024'),
-                              subject_group='phosphenes')
-    experiment = ExperimentRunner(data_save_root=os.path.join('.', 'experimental_data'),
-                                  model=MODEL_NAME, temperature=0., benchmark=testscialom,
-                                  candidate_visual_degrees=testscialom.visual_degrees,
-                                  generic_system_message=GENERIC_SYSTEM_MESSAGE, debug_mode=False)
+    # testscialom = Scialom2024(data_root_directory=os.path.join('.', 'benchmarks', 'Scialom2024'),
+    #                           subject_group='phosphenes')
+    # experiment = ExperimentRunner(data_save_root=os.path.join('.', 'experimental_data'),
+    #                               model=MODEL_NAME, temperature=0., benchmark=testscialom,
+    #                               candidate_visual_degrees=testscialom.visual_degrees,
+    #                               generic_system_message=GENERIC_SYSTEM_MESSAGE, debug_mode=False)
+    testlonnqvist = Lonnqvist2024(data_root_directory=os.path.join('.', 'benchmarks', 'Lonnqvist2024'))
+    data_handler = LonnqvistDataHandler(save_root=os.path.join('.', 'experimental_data'))
+    experiment = ExperimentRunner(model=MODEL_NAME,
+                                  temperature=0.,
+                                  benchmark=testlonnqvist,
+                                  data_handler=data_handler,
+                                  candidate_visual_degrees=testlonnqvist.visual_degrees,
+                                  generic_system_message=GENERIC_SYSTEM_MESSAGE,
+                                  debug_mode=False)
     experiment.run_experiment()

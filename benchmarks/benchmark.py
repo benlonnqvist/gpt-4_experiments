@@ -279,6 +279,94 @@ class Scialom2024(Benchmark):
         return 'INVALID RESPONSE'
 
 
+class Lonnqvist2024(Benchmark):
+    setup_file_name = os.path.join('.', 'benchmarks', 'Lonnqvist2024', 'lonnqvist2024.json')
+    visual_degrees = 8.
+    name = 'BENCHMARKpathfinder'
+
+    def __init__(self, data_root_directory: str):
+        super().__init__(data_root_directory, self.setup_file_name, self.visual_degrees, self.name)
+        self._current_block_index = 0
+        self.current_block_index = str(self._current_block_index)
+        self.current_block_name = 'none'
+        self.current_block_directory = os.path.join(self.data_root_directory)
+        self.current_trial_in_block = 0
+        self.subject_group = ['all', ]
+        self.model_correct_responses = {}
+        self.stimulus_metadata, self.stimulus_directory = None, None
+
+    def run_stimulus_selection(self):
+        selected_stimulus = self.select_stimulus()
+        return selected_stimulus
+
+    def start_new_block(self):
+        self.current_trial_in_block = 0
+        self.current_block_name = self.experimental_setup['blocks'][self.current_block_index]['name']
+        self.model_correct_responses[self.current_block_index] = []
+        self.current_block_directory = os.path.join(self.data_root_directory)
+        self.stimulus_metadata, self.stimulus_directory = self.load_metadata(
+            self.data_root_directory,
+            self.current_block_name
+        )
+
+    def end_block(self):
+        self._current_block_index += 1
+        self.current_block_index = str(self._current_block_index)
+
+    def select_stimulus(self) -> str:
+        # select a random stimulus_id from self.stimulus_metadata['stimulus_id']
+        selected_stimulus = self.stimulus_metadata.sample(1)
+        # remove selected_stimulus from self.stimulus_metadata
+        self.stimulus_metadata = self.stimulus_metadata[
+            self.stimulus_metadata['stimulus_id'] != selected_stimulus['stimulus_id'].item()]
+        return selected_stimulus
+
+    def load_metadata(self, root_directory, percentage_elements: str):
+        metadata_directory = os.path.join(root_directory, 'stimuli', 'metadata.csv')
+        image_directory = os.path.join(root_directory, 'stimuli', 'images')
+        stimuli = pd.read_csv(metadata_directory)
+        stimuli = stimuli.assign(
+            image_height=1080,
+            image_width=1920,
+            visual_degrees=8.,
+        )
+        stimuli = stimuli.astype({
+            'path': 'str',
+            'idx': 'int',
+            'dashed': 'str',
+            'correct_response_key': 'str',
+            'condition': 'str',
+            'n_curves': 'str',
+            'curve_length': 'int',
+            'n_cross': 'int',
+            'image_height': 'int',
+            'image_width': 'int',
+        })
+        stimuli = stimuli.rename(columns={'idx': 'stimulus_id',
+                                          'path': 'file_name'})
+        return stimuli, image_directory
+
+    def is_response_correct(self, response, stimulus):
+        response = self.process_response_string(response)
+        if response == stimulus['correct_response_key'].item().lower():
+            is_correct = 1
+        else:
+            is_correct = 0
+        self.model_correct_responses[self.current_block_index].append(is_correct)
+        return is_correct
+
+    def end_trial(self):
+        self.current_trial_in_block += 1
+
+    @staticmethod
+    def find_correct_response_in_string(input_str: str) -> str:
+        correct_responses = ['f', 'j']
+        for response in correct_responses:
+            if response in input_str:
+                return response
+        return 'INVALID RESPONSE'
+
+
 class ShowImage(Benchmark):
     setup_file_name = os.path.join('.', 'benchmarks', 'ScialomUnpublished')
     visual_degrees = 8.
