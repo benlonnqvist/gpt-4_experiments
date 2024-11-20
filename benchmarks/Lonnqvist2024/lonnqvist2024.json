@@ -1,0 +1,16 @@
+{
+    "blocks": {
+        "0": {
+            "name": "all",
+            "feedback": false,
+            "trials": 380
+        }
+    },
+    "shared_instruction": "The experiment will now begin.",
+    "experiment-specific_instruction": "EXPERIMENT INSTRUCTIONS. Today you are going to do an experiment about visual recognition. You will be shown images containing two interlaced curves. There are two dots placed on the extremities of one or both curves. Your task is to determine whether both dots belong to the same curve or to different curves. EXPERIMENT INSTRUCTIONS (2). The experiment consists of a number of trials. Respond with 'My response is: F' to report dots belonging to the same curve. Respond with 'My response is: J' to report dots belonging to different curves. You are also shown an example image. Now the experiment will begin.",
+    "feedback_string": {
+        "correct": "Correct response.",
+        "incorrect": "Incorrect response."
+    },
+    "stimulus_message": "Do the dots at the extremities of the curves belong to the same curve or different curves? Respond only with 'My response is: F' to report dots belonging to the same curve. Respond with 'My response is: J' to report dots belonging to different curves."
+}
