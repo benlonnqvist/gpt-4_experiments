@@ -79,7 +79,7 @@ class MalaniaDataHandler(DataHandler):
         plt.show()
 
 
-class ANONAUTHOR2DataHandler(DataHandler):
+class ScialomDataHandler(DataHandler):
     def __init__(self, save_root):
         super().__init__(save_root)
 
@@ -105,7 +105,7 @@ class ANONAUTHOR2DataHandler(DataHandler):
         self.df = pd.concat([self.df, new_row])
 
 
-class ANONAUTHOR1DataHandler(DataHandler):
+class LonnqvistDataHandler(DataHandler):
     def __init__(self, save_root):
         super().__init__(save_root)
 

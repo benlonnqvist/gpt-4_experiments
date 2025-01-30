@@ -5,9 +5,9 @@ import copy
 
 from tqdm import tqdm
 
-from benchmarks.benchmark import Benchmark, ANONAUTHOR22024, ANONAUTHOR12024
+from benchmarks.benchmark import Benchmark, Scialom2024, Lonnqvist2024
 from local_functions import load_image, collect_hidden_params  # to hide potentially proprietary information
-from data_handler import DataHandler, ANONAUTHOR2DataHandler, ANONAUTHOR1DataHandler
+from data_handler import DataHandler, ScialomDataHandler, LonnqvistDataHandler
 
 from openai import OpenAI
 
@@ -30,7 +30,7 @@ class ExperimentRunner:
         self.candidate_visual_degrees = candidate_visual_degrees
         self.debug_mode = debug_mode
         system_message = generic_system_message + '\n' + self.benchmark.experimental_setup['shared_instruction']
-        example_stimulus_path = os.path.join('benchmarks', 'ANONAUTHOR12024', 'stimuli', 'image_instructions.png')
+        example_stimulus_path = os.path.join('benchmarks', 'Lonnqvist2024', 'stimuli', 'image_instructions.png')
         example_image = load_image(example_stimulus_path, self.benchmark.visual_degrees, self.candidate_visual_degrees,
                            debug_mode=self.debug_mode)
         self.base_messages = [
@@ -211,14 +211,14 @@ if __name__ == '__main__':
 
     # openai.organization = ORGANIZATION
 
-    # testscialom = ANONAUTHOR22024(data_root_directory=os.path.join('.', 'benchmarks', 'ANONAUTHOR22024'),
+    # testscialom = Scialom2024(data_root_directory=os.path.join('.', 'benchmarks', 'Scialom2024'),
     #                           subject_group='phosphenes')
     # experiment = ExperimentRunner(data_save_root=os.path.join('.', 'experimental_data'),
     #                               model=MODEL_NAME, temperature=0., benchmark=testscialom,
     #                               candidate_visual_degrees=testscialom.visual_degrees,
     #                               generic_system_message=GENERIC_SYSTEM_MESSAGE, debug_mode=False)
-    testlonnqvist = ANONAUTHOR12024(data_root_directory=os.path.join('.', 'benchmarks', 'ANONAUTHOR12024'))
-    data_handler = ANONAUTHOR1DataHandler(save_root=os.path.join('.', 'experimental_data'))
+    testlonnqvist = Lonnqvist2024(data_root_directory=os.path.join('.', 'benchmarks', 'Lonnqvist2024'))
+    data_handler = LonnqvistDataHandler(save_root=os.path.join('.', 'experimental_data'))
     experiment = ExperimentRunner(model=MODEL_NAME,
                                   temperature=0.,
                                   benchmark=testlonnqvist,
