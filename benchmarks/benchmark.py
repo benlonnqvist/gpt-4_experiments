@@ -187,10 +187,10 @@ class TestMalania2007(Malania2007):
         return is_correct
 
 
-class Scialom2024(Benchmark):
-    setup_file_name = os.path.join('.', 'benchmarks', 'Scialom2024', 'scialom2024.json')
+class ANONAUTHOR22024(Benchmark):
+    setup_file_name = os.path.join('.', 'benchmarks', 'ANONAUTHOR22024', 'ANONAUTHOR22024.json')
     visual_degrees = 8.
-    name = 'BENCHMARKscialom2024'
+    name = 'BENCHMARKANONAUTHOR22024'
 
     def __init__(self,
                  data_root_directory: str,
@@ -279,8 +279,8 @@ class Scialom2024(Benchmark):
         return 'INVALID RESPONSE'
 
 
-class Lonnqvist2024(Benchmark):
-    setup_file_name = os.path.join('.', 'benchmarks', 'Lonnqvist2024', 'lonnqvist2024.json')
+class ANONAUTHOR12024(Benchmark):
+    setup_file_name = os.path.join('.', 'benchmarks', 'ANONAUTHOR12024', 'ANONAUTHOR12024.json')
     visual_degrees = 8.
     name = 'BENCHMARKpathfinder'
 
@@ -368,7 +368,7 @@ class Lonnqvist2024(Benchmark):
 
 
 class ShowImage(Benchmark):
-    setup_file_name = os.path.join('.', 'benchmarks', 'ScialomUnpublished')
+    setup_file_name = os.path.join('.', 'benchmarks', 'ANONAUTHOR2Unpublished')
     visual_degrees = 8.
     name = 'BENCHMARKshowimage'
 
