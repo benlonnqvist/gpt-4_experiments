@@ -1,4 +1,5 @@
 import os
+import random
 
 import pandas as pd
 import matplotlib.pyplot as plt
@@ -132,9 +133,6 @@ class LonnqvistDataHandler(DataHandler):
         }
         new_row = pd.DataFrame(trial_data)
         self.df = pd.concat([self.df, new_row])
-
-
-import random
 
 
 def generate_mock_datahandler(save_root=os.path.join('.', 'experimental_data'),

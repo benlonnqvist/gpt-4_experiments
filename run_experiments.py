@@ -86,18 +86,6 @@ class ExperimentRunner:
             response_is_correct = self.benchmark.is_response_correct(model_response_message, stimulus)
 
             self.benchmark.end_trial()
-
-            # update data handler(s)
-            # TODO: should refactor data_handler to be contained in the benchmark class
-            # scialom
-            # self.data_handler.add_trial(
-            #     subject_group=self.benchmark.subject_group[int(self.benchmark.current_block_index)],
-            #     visual_degrees=self.benchmark.visual_degrees,
-            #     is_correct=response_is_correct,
-            #     subject_answer=model_response_message,
-            #     correct_answer=stimulus['category'],
-            #     percentage_elements=stimulus['percentage_elements'],
-            #     stimulus_id=stimulus['stimulus_id'])
             self.data_handler.add_trial(
                 visual_degrees=self.benchmark.visual_degrees,
                 is_correct=response_is_correct,
@@ -175,15 +163,11 @@ class ExperimentRunner:
         self.current_messages = []
 
     def create_json_log(self, initial_data, root_folder_name: str = 'logs'):
-        # TODO: refactor this somewhere somehow perhaps?
         root = os.path.join('.', root_folder_name)
         if not os.path.exists(root):
             os.makedirs(root)
 
         seed = 0
-        # scialom_message_json_log_name = f'LOG_MODEL{self.model}_TEMP{self.temperature}_BENCHMARK{self.benchmark.name}_' \
-        #                         f'{self.benchmark.subject_group[0]}_VISDEG{self.candidate_visual_degrees}_' \
-        #                         f'SEED{seed}.json'
         message_json_log_name = f'LOG_MODEL{self.model}_TEMP{self.temperature}_BENCHMARK{self.benchmark.name}_' \
                                 f'VISDEG{self.candidate_visual_degrees}_' \
                                 f'SEED{seed}.json'
@@ -209,14 +193,6 @@ if __name__ == '__main__':
     ORGANIZATION = local_info["ORGANIZATION"]
     GENERIC_SYSTEM_MESSAGE = local_info["GENERIC_SYSTEM_MESSAGE"]
 
-    # openai.organization = ORGANIZATION
-
-    # testscialom = Scialom2024(data_root_directory=os.path.join('.', 'benchmarks', 'Scialom2024'),
-    #                           subject_group='phosphenes')
-    # experiment = ExperimentRunner(data_save_root=os.path.join('.', 'experimental_data'),
-    #                               model=MODEL_NAME, temperature=0., benchmark=testscialom,
-    #                               candidate_visual_degrees=testscialom.visual_degrees,
-    #                               generic_system_message=GENERIC_SYSTEM_MESSAGE, debug_mode=False)
     testlonnqvist = Lonnqvist2024(data_root_directory=os.path.join('.', 'benchmarks', 'Lonnqvist2024'))
     data_handler = LonnqvistDataHandler(save_root=os.path.join('.', 'experimental_data'))
     experiment = ExperimentRunner(model=MODEL_NAME,
