@@ -49,10 +49,10 @@ Benchmarks typically should contain some metadata in `.json` files. Follow the f
 
 ### Running Experiments
 
-To initiate experiments, execute the `main.py` script:
+To initiate experiments, execute the `run_experiments.py` script:
 
 ```bash
-python main.py
+python run_experiments.py
 ```
 
 This script uses functions from `data_handler.py` and `local_functions.py` to process data and run experiments.
