@@ -2,7 +2,7 @@
 
 ## Overview
 
-This repository, created by [benlonnqvist](https://github.com/benlonnqvist), is dedicated to experiments with OpenAI's GPT-4 model. It includes scripts and tools designed to handle data, run experiments, and benchmark the performance of GPT-4 across various tasks.
+This repository contains experiments with OpenAI's GPT-4 model. It includes scripts and tools designed to handle data, run experiments, and benchmark the performance of GPT-4 across various tasks.
 
 ## Repository Structure
 
