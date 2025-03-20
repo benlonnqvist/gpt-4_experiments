@@ -7,10 +7,9 @@ This repository contains experiments with OpenAI's GPT-4 model. It includes scri
 ## Repository Structure
 
 - **`benchmarks/`**: Contains benchmark datasets and results used to evaluate GPT-4's performance.
-- **`main.py`**: The primary script to execute experiments.
 - **`data_handler.py`**: Manages data loading, preprocessing, and augmentation.
-- **`local_functions.py`**: Houses utility functions to support experiments.
-- **`run_experiments.py`**: Orchestrates the execution of various experiments.
+- **`local_functions.py`**: Houses utility functions to support experiments. 
+- **`run_experiments.py`**: The primary script to execute experiments.
 - **`LICENSE`**: Specifies the repository's licensing terms.
 - **`README.md`**: Provides an overview and instructions for the repository.
 
